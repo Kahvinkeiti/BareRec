@@ -42,6 +42,20 @@ BareRec is a small, native Windows screen recorder built for people who want to 
 
 The recording is saved as an MP4 file in the selected folder. On older CPUs, Original resolution and higher FPS may increase CPU usage.
 
+## Website
+
+BareRec includes a responsive website in [`index.html`](index.html), ready for **GitHub Pages**.
+
+**Publish it:**
+1. Open [Repository Settings → Pages](https://github.com/Kahvinkeiti/BareRec/settings/pages).
+2. Under **Build and deployment**, select **Deploy from a branch**.
+3. Select **main** and **/(root)**, then click **Save**.
+4. After GitHub Pages publishes, the site will be at **https://kahvinkeiti.github.io/BareRec/**.
+
+The website's **Download** button links directly to the asset named **`BareRec.exe`** from the latest GitHub Release. **Attach the EXE using that exact filename** to the latest published release; otherwise the direct download cannot work. The button starts the asset download instead of showing the GitHub Releases page. GitHub may handle the download via a redirect.
+
+The site also links to the GitHub repository and [YouTube channel](https://youtube.com/@kahvinkeiti).
+
 ## For developers
 
 The app is written in **native C++20**, using Windows Win32 GDI screen capture and Microsoft's Media Foundation H.264 encoder. It does not ship with .NET, FFmpeg or third-party codec DLLs.
