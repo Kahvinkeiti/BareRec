@@ -147,7 +147,7 @@ void Record(const std::wstring& file, int fps) {
         BITMAPINFO info{};
         info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
         info.bmiHeader.biWidth = width;
-        info.bmiHeader.biHeight = -height; // Top-down RGB
+        info.bmiHeader.biHeight = height; // Bottom-up RGB32: matches Media Foundation RGB32 input orientation
         info.bmiHeader.biPlanes = 1;
         info.bmiHeader.biBitCount = 32;
         info.bmiHeader.biCompression = BI_RGB;
