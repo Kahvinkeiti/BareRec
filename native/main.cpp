@@ -133,7 +133,7 @@ void Record(const std::wstring& file, int fps, bool efficientMode) {
         Check(output->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video), "Set video type");
         Check(output->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264), "Set H264 type");
         Check(output->SetUINT32(MF_MT_AVG_BITRATE,
-            efficientMode ? (fps >= 60 ? 4000000 : 2500000) : (fps >= 60 ? 10000000 : 6000000)), "Set bitrate");
+            efficientMode ? (fps >= 60 ? 12000000 : 8000000) : (fps >= 60 ? 16000000 : 12000000)), "Set bitrate");
         Check(output->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive), "Set interlace");
         Check(MFSetAttributeSize(output.Get(), MF_MT_FRAME_SIZE, width, height), "Set frame size");
         Check(MFSetAttributeRatio(output.Get(), MF_MT_FRAME_RATE, fps, 1), "Set frame rate");
@@ -168,8 +168,14 @@ void Record(const std::wstring& file, int fps, bool efficientMode) {
         bitmap = CreateDIBSection(screen, &info, DIB_RGB_COLORS, &pixels, nullptr, 0);
         if (!bitmap || !pixels) throw std::runtime_error("Could not create capture buffer");
         oldBitmap = SelectObject(memoryDC, bitmap);
-        if (efficientMode && (width != desktopWidth || height != desktopHeight))
+        // HALFTONE reduces aliasing and jagged text edges during downscaling.
+        // Restore COLORONCOLOR for 1:1 capture to avoid needless processing.
+        if (width != desktopWidth || height != desktopHeight) {
+            SetStretchBltMode(memoryDC, HALFTONE);
+            SetBrushOrgEx(memoryDC, 0, 0, nullptr);
+        } else {
             SetStretchBltMode(memoryDC, COLORONCOLOR);
+        }
 
         const DWORD bytes = static_cast<DWORD>(width * height * 4);
         const LONGLONG frameDuration = 10000000LL / fps;
@@ -318,7 +324,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         AddControl(hwnd, L"STATIC", L"Resolution", SS_LEFT, 239, 183, 91, 28);
         resolutionCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL,
                                     329, 178, 130, 150, ID_RESOLUTION);
-        SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Efficient 720p"));
+        SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Quality 720p"));
         SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Original"));
         SendMessageW(resolutionCombo, CB_SETCURSEL, 0, 0);
         AddControl(hwnd, L"STATIC", L"Ctrl + Shift + F9: start / stop", SS_LEFT,
