@@ -39,8 +39,8 @@ public sealed class MainForm : Form
         LoadSettings();
 
         AddLabel("BareRec", 26, 18, 30, FontStyle.Bold);
-        AddLabel("Kuvaa. Tallenna. Valmis.", 26, 66, 11, FontStyle.Regular);
-        AddLabel("Tallennuskansio", 26, 108, 10, FontStyle.Regular);
+        AddLabel("Record. Save. Done.", 26, 66, 11, FontStyle.Regular);
+        AddLabel("Save location", 26, 108, 10, FontStyle.Regular);
 
         folder.SetBounds(26, 138, 315, 30);
         folder.Text = settings.Folder;
@@ -49,7 +49,7 @@ public sealed class MainForm : Form
         folder.BorderStyle = BorderStyle.FixedSingle;
         folder.TextChanged += (_, _) => SaveSettings();
         Controls.Add(folder);
-        SetupButton(browse, "Valitse", 350, 136, 113, 34);
+        SetupButton(browse, "Browse", 350, 136, 113, 34);
         browse.Click += (_, _) =>
         {
             using var dialog = new FolderBrowserDialog();
@@ -57,13 +57,13 @@ public sealed class MainForm : Form
             if (dialog.ShowDialog(this) == DialogResult.OK) folder.Text = dialog.SelectedPath;
         };
 
-        systemAudio.Text = "Tietokoneen äänet";
+        systemAudio.Text = "System audio";
         systemAudio.Checked = settings.SystemAudio;
         systemAudio.SetBounds(26, 194, 210, 29);
         systemAudio.CheckedChanged += (_, _) => SaveSettings();
         Controls.Add(systemAudio);
 
-        microphone.Text = "Mikrofoni";
+        microphone.Text = "Microphone";
         microphone.Checked = settings.Microphone;
         microphone.SetBounds(245, 194, 180, 29);
         microphone.CheckedChanged += (_, _) => SaveSettings();
@@ -76,19 +76,19 @@ public sealed class MainForm : Form
         fps.SelectedItem = settings.Fps == 60 ? "60" : "30";
         fps.SelectedIndexChanged += (_, _) => SaveSettings();
         Controls.Add(fps);
-        AddLabel("Ctrl + Shift + F9: aloita / lopeta", 176, 244, 10, FontStyle.Regular);
+        AddLabel("Ctrl + Shift + F9: start / stop", 176, 244, 10, FontStyle.Regular);
 
-        SetupButton(record, "●  Aloita tallennus", 26, 297, 437, 48);
+        SetupButton(record, "●  Start recording", 26, 297, 437, 48);
         record.BackColor = accent;
         record.Font = new Font("Segoe UI", 12, FontStyle.Bold);
         record.Click += async (_, _) => await ToggleAsync();
 
-        SetupButton(openFolder, "Avaa tallennuskansio", 26, 352, 180, 28);
+        SetupButton(openFolder, "Open recordings", 26, 352, 180, 28);
         openFolder.Click += (_, _) => OpenFolder();
         status.SetBounds(216, 353, 247, 28);
         status.TextAlign = ContentAlignment.MiddleRight;
         status.Font = new Font("Segoe UI", 9);
-        status.Text = "Valmis";
+        status.Text = "Ready";
         Controls.Add(status);
 
         elapsed.SetBounds(350, 30, 113, 32);
@@ -98,8 +98,8 @@ public sealed class MainForm : Form
         timer.Tick += (_, _) => elapsed.Text = (DateTime.Now - started).ToString(@"hh\:mm\:ss");
 
         var trayMenu = new ContextMenuStrip();
-        trayMenu.Items.Add("Näytä BareRec", null, (_, _) => RestoreWindow());
-        trayMenu.Items.Add("Lopeta tallennus", null, (_, _) => StopRecording());
+        trayMenu.Items.Add("Show BareRec", null, (_, _) => RestoreWindow());
+        trayMenu.Items.Add("Stop recording", null, (_, _) => StopRecording());
         tray.Icon = SystemIcons.Application;
         tray.Text = "BareRec";
         tray.ContextMenuStrip = trayMenu;
@@ -108,7 +108,7 @@ public sealed class MainForm : Form
         Shown += (_, _) =>
         {
             hotkeyRegistered = RegisterHotKey(Handle, HotkeyId, Ctrl | Shift, 0x78); // F9
-            if (!hotkeyRegistered) status.Text = "Pikanäppäin varattu";
+            if (!hotkeyRegistered) status.Text = "Hotkey unavailable";
         };
         FormClosing += OnClosing;
         FormClosed += (_, _) =>
@@ -156,7 +156,7 @@ public sealed class MainForm : Form
         try
         {
             string destination = folder.Text.Trim();
-            if (string.IsNullOrWhiteSpace(destination)) throw new InvalidOperationException("Valitse tallennuskansio.");
+            if (string.IsNullOrWhiteSpace(destination)) throw new InvalidOperationException("Browse tallennuskansio.");
             Directory.CreateDirectory(destination);
             output = Path.Combine(destination, "BareRec_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff") + ".mp4");
             int selectedFps = fps.SelectedItem?.ToString() == "60" ? 60 : 30;
@@ -195,8 +195,8 @@ public sealed class MainForm : Form
             stopping = false;
             started = DateTime.Now;
             timer.Start();
-            status.Text = "Tallennetaan...";
-            record.Text = "■  Lopeta ja tallenna";
+            status.Text = "Recording...";
+            record.Text = "■  Stop and save";
             record.BackColor = Color.FromArgb(218, 77, 86);
             fps.Enabled = systemAudio.Enabled = microphone.Enabled = false;
             tray.Visible = true;
@@ -207,7 +207,7 @@ public sealed class MainForm : Form
             recorder = null;
             Finish();
             RestoreWindow();
-            MessageBox.Show(this, ex.Message, "BareRec — virhe", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, ex.Message, "BareRec — error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {
@@ -221,7 +221,7 @@ public sealed class MainForm : Form
         if (!recording || stopping) return;
         stopping = true;
         timer.Stop();
-        status.Text = "Viimeistellään MP4...";
+        status.Text = "Finalizing MP4...";
         record.Enabled = false;
         try { recorder?.Stop(); }
         catch (Exception ex) { OnFailureUi(ex.Message); }
@@ -233,7 +233,7 @@ public sealed class MainForm : Form
         Ui(() =>
         {
             Finish();
-            status.Text = "Tallennettu: " + fileName;
+            status.Text = "Saved: " + fileName;
             if (closingAfterStop) Close();
         });
     }
@@ -244,7 +244,7 @@ public sealed class MainForm : Form
     {
         Finish();
         RestoreWindow();
-        MessageBox.Show(this, error, "Tallennus epäonnistui", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        MessageBox.Show(this, error, "Recording failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
         if (closingAfterStop) Close();
     }
 
@@ -259,7 +259,7 @@ public sealed class MainForm : Form
         timer.Stop();
         recording = stopping = false;
         record.Enabled = true;
-        record.Text = "●  Aloita tallennus";
+        record.Text = "●  Start recording";
         record.BackColor = accent;
         fps.Enabled = systemAudio.Enabled = microphone.Enabled = true;
         tray.Visible = false;
@@ -281,7 +281,7 @@ public sealed class MainForm : Form
             Directory.CreateDirectory(folder.Text);
             Process.Start(new ProcessStartInfo(folder.Text) { UseShellExecute = true });
         }
-        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Kansiota ei voitu avata"); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not open folder"); }
     }
 
     private static string SettingsPath => Path.Combine(
