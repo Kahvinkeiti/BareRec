@@ -156,7 +156,7 @@ public sealed class MainForm : Form
         try
         {
             string destination = folder.Text.Trim();
-            if (string.IsNullOrWhiteSpace(destination)) throw new InvalidOperationException("Browse tallennuskansio.");
+            if (string.IsNullOrWhiteSpace(destination)) throw new InvalidOperationException("Choose a recording folder.");
             Directory.CreateDirectory(destination);
             output = Path.Combine(destination, "BareRec_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff") + ".mp4");
             int selectedFps = fps.SelectedItem?.ToString() == "60" ? 60 : 30;
