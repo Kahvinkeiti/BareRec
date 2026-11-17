@@ -9,7 +9,8 @@ BareRec is being rewritten in **native C++**, using Windows Win32 APIs for scree
 - Record the **primary display** to local H.264 MP4
 - Start / stop using the button or **Ctrl + Shift + F9**
 - Choose the recording folder
-- Select 30 or 60 FPS
+- Select 15, 30 or 60 FPS (30 by default)
+- **Efficient 720p** by default, or select **Original** to capture full display resolution
 - English user interface
 - **Video only for now: system sound and microphone recording are NOT implemented yet**
 - Windows 10/11 x64; relies on the Windows Media Foundation H.264 components
@@ -27,7 +28,8 @@ GitHub Actions uploads the EXE alone and prints its exact file size in the build
 - Build: MSVC x64, C++20, `/MT`
 - Capture: GDI `BitBlt` plus Windows Media Foundation sink writer
 - The initial GDI capture is intentionally simple. It may use more CPU than a GPU-based Desktop Duplication or Windows Graphics Capture implementation, and some hardware-accelerated/protected content may be blank.
-- Constant 30/60 FPS timestamps are used; performance and audio recording will need subsequent iterations.
+- The default efficient mode scales screen capture to at most 1280×720, keeping the original aspect ratio. This reduces the number of pixels encoded, but does not guarantee a particular CPU usage. The GDI capture and software encoding may still be relatively expensive on older Intel CPUs.
+- Constant 15/30/60 FPS timestamps are used; performance and audio recording will need subsequent iterations.
 - On Windows N editions, Media Feature Pack may be needed for Windows' media encoder.
 - The old .NET files are kept in the repository as a legacy prototype, but **GitHub Actions now builds the native C++ version**.
 
