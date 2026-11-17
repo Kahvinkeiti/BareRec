@@ -12,6 +12,8 @@
 #include <atomic>
 #include <chrono>
 #include <cstring>
+#include <cstdio>
+#include <cwchar>
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
