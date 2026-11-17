@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build BareRec Native Windows EXE
 
 on:
   workflow_dispatch:
@@ -6,26 +6,28 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  native-build:
     runs-on: windows-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Set up .NET 10
-        uses: actions/setup-dotnet@v4
+      - name: Configure MSVC x64 tools
+        uses: ilammy/msvc-dev-cmd@v1
         with:
-          dotnet-version: '10.0.x'
-      - name: Publish self-contained single EXE (x64)
+          arch: x64
+      - name: Build native static-runtime EXE
         shell: pwsh
         run: |
-          dotnet publish BareRec.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:PlatformTarget=x64 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o publish
+          New-Item -ItemType Directory -Force publish | Out-Null
+          cl /nologo /std:c++20 /O2 /EHsc /W4 /DUNICODE /D_UNICODE /MT /Fe:publish\BareRec.exe native\main.cpp /link /SUBSYSTEM:WINDOWS
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $exe = Get-Item publish/BareRec.exe -ErrorAction Stop
-          Write-Host "BareRec.exe size: $([math]::Round($exe.Length / 1MB, 2)) MiB"
-      - name: Upload only executable
+          Write-Host "Native BareRec EXE size: $([math]::Round($exe.Length / 1MB, 3)) MiB"
+          if ($exe.Length -gt 10MB) { throw "Native executable exceeds 10 MiB target" }
+      - name: Upload standalone EXE
         uses: actions/upload-artifact@v4
         with:
-          name: BareRec-Single-EXE
+          name: BareRec-Native-EXE
           path: publish/BareRec.exe
           if-no-files-found: error
