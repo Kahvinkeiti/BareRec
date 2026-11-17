@@ -9,6 +9,7 @@
 #include <mfreadwrite.h>
 #include <mferror.h>
 #include <wrl/client.h>
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstring>
@@ -32,9 +33,9 @@ using Microsoft::WRL::ComPtr;
 namespace fs = std::filesystem;
 
 constexpr UINT WM_RECORD_DONE = WM_APP + 1;
-constexpr int ID_START = 1001, ID_BROWSE = 1002, ID_FOLDER = 1003, ID_FPS = 1004;
+constexpr int ID_START = 1001, ID_BROWSE = 1002, ID_FOLDER = 1003, ID_FPS = 1004, ID_RESOLUTION = 1005;
 constexpr int HOTKEY_ID = 77;
-HWND mainWindow{}, startButton{}, folderEdit{}, fpsCombo{}, statusText{};
+HWND mainWindow{}, startButton{}, folderEdit{}, fpsCombo{}, resolutionCombo{}, statusText{};
 HFONT uiFont{};
 std::thread recordingThread;
 std::atomic<bool> stopRequested{false}, recording{false};
@@ -92,7 +93,7 @@ std::wstring MakeFilename(const std::wstring& directory) {
     return (fs::path(directory) / name).wstring();
 }
 
-void Record(const std::wstring& file, int fps) {
+void Record(const std::wstring& file, int fps, bool efficientMode) {
     HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     Check(com, "Initialize COM");
     bool mfStarted = false;
@@ -103,9 +104,19 @@ void Record(const std::wstring& file, int fps) {
         Check(MFStartup(MF_VERSION), "Initialize Media Foundation");
         mfStarted = true;
 
-        const int width = GetSystemMetrics(SM_CXSCREEN) & ~1;
-        const int height = GetSystemMetrics(SM_CYSCREEN) & ~1;
-        if (width <= 0 || height <= 0) throw std::runtime_error("No valid primary display found");
+        const int desktopWidth = GetSystemMetrics(SM_CXSCREEN);
+        const int desktopHeight = GetSystemMetrics(SM_CYSCREEN);
+        if (desktopWidth <= 0 || desktopHeight <= 0)
+            throw std::runtime_error("No valid primary display found");
+        // In efficient mode limit output to a 1280x720 bounding box, keeping the screen aspect ratio.
+        // Fewer encoded pixels reduce CPU work on older hardware.
+        double scale = efficientMode
+            ? std::min({1.0, 1280.0 / desktopWidth, 720.0 / desktopHeight})
+            : 1.0;
+        const int width = (static_cast<int>(desktopWidth * scale) & ~1);
+        const int height = (static_cast<int>(desktopHeight * scale) & ~1);
+        if (width <= 0 || height <= 0)
+            throw std::runtime_error("Invalid output dimensions");
         if (static_cast<unsigned long long>(width) * height > 16000000ULL)
             throw std::runtime_error("This display resolution is not supported in the first version");
 
@@ -120,7 +131,8 @@ void Record(const std::wstring& file, int fps) {
         Check(MFCreateMediaType(&output), "Create output media type");
         Check(output->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video), "Set video type");
         Check(output->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264), "Set H264 type");
-        Check(output->SetUINT32(MF_MT_AVG_BITRATE, fps == 60 ? 10000000 : 6000000), "Set bitrate");
+        Check(output->SetUINT32(MF_MT_AVG_BITRATE,
+            efficientMode ? (fps >= 60 ? 4000000 : 2500000) : (fps >= 60 ? 10000000 : 6000000)), "Set bitrate");
         Check(output->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive), "Set interlace");
         Check(MFSetAttributeSize(output.Get(), MF_MT_FRAME_SIZE, width, height), "Set frame size");
         Check(MFSetAttributeRatio(output.Get(), MF_MT_FRAME_RATE, fps, 1), "Set frame rate");
@@ -155,14 +167,19 @@ void Record(const std::wstring& file, int fps) {
         bitmap = CreateDIBSection(screen, &info, DIB_RGB_COLORS, &pixels, nullptr, 0);
         if (!bitmap || !pixels) throw std::runtime_error("Could not create capture buffer");
         oldBitmap = SelectObject(memoryDC, bitmap);
+        if (efficientMode && (width != desktopWidth || height != desktopHeight))
+            SetStretchBltMode(memoryDC, COLORONCOLOR);
 
         const DWORD bytes = static_cast<DWORD>(width * height * 4);
         const LONGLONG frameDuration = 10000000LL / fps;
         auto nextFrame = std::chrono::steady_clock::now();
         LONGLONG frameNumber = 0;
         do {
-            if (!BitBlt(memoryDC, 0, 0, width, height, screen, 0, 0, SRCCOPY | CAPTUREBLT))
-                throw std::runtime_error("Desktop capture failed");
+            BOOL captured = (width == desktopWidth && height == desktopHeight)
+                ? BitBlt(memoryDC, 0, 0, width, height, screen, 0, 0, SRCCOPY | CAPTUREBLT)
+                : StretchBlt(memoryDC, 0, 0, width, height, screen,
+                             0, 0, desktopWidth, desktopHeight, SRCCOPY | CAPTUREBLT);
+            if (!captured) throw std::runtime_error("Desktop capture failed");
 
             ComPtr<IMFMediaBuffer> buffer;
             Check(MFCreateMemoryBuffer(bytes, &buffer), "Allocate video buffer");
@@ -224,16 +241,19 @@ void BeginRecording() {
         return;
     }
     stopRequested = false;
-    int fps = SendMessageW(fpsCombo, CB_GETCURSEL, 0, 0) == 1 ? 60 : 30;
+    int selectedFps = static_cast<int>(SendMessageW(fpsCombo, CB_GETCURSEL, 0, 0));
+    int fps = selectedFps == 0 ? 15 : selectedFps == 2 ? 60 : 30;
+    bool efficientMode = SendMessageW(resolutionCombo, CB_GETCURSEL, 0, 0) != 1;
     SetWindowTextW(startButton, L"Stop and save");
     SetWindowTextW(statusText, L"Recording...");
     EnableWindow(folderEdit, FALSE);
     EnableWindow(fpsCombo, FALSE);
+    EnableWindow(resolutionCombo, FALSE);
 
-    recordingThread = std::thread([file = outputFile, fps] {
+    recordingThread = std::thread([file = outputFile, fps, efficientMode] {
         auto* result = new Completion;
         try {
-            Record(file, fps);
+            Record(file, fps, efficientMode);
             result->success = true;
             result->message = L"Saved: " + fs::path(file).filename().wstring();
         } catch (const std::exception& error) {
@@ -287,12 +307,19 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         folderEdit = AddControl(hwnd, L"EDIT", DefaultFolder().c_str(), WS_BORDER | ES_AUTOHSCROLL,
                                 22, 133, 320, 31, ID_FOLDER);
         AddControl(hwnd, L"BUTTON", L"Browse", BS_PUSHBUTTON, 354, 132, 105, 33, ID_BROWSE);
-        AddControl(hwnd, L"STATIC", L"Frame rate", SS_LEFT, 22, 185, 110, 28);
+        AddControl(hwnd, L"STATIC", L"Frame rate", SS_LEFT, 22, 183, 110, 28);
         fpsCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL,
-                              134, 180, 90, 150, ID_FPS);
+                              134, 178, 90, 150, ID_FPS);
+        SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"15 FPS"));
         SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"30 FPS"));
         SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"60 FPS"));
-        SendMessageW(fpsCombo, CB_SETCURSEL, 0, 0);
+        SendMessageW(fpsCombo, CB_SETCURSEL, 1, 0);
+        AddControl(hwnd, L"STATIC", L"Resolution", SS_LEFT, 239, 183, 91, 28);
+        resolutionCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL,
+                                    329, 178, 130, 150, ID_RESOLUTION);
+        SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Efficient 720p"));
+        SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Original"));
+        SendMessageW(resolutionCombo, CB_SETCURSEL, 0, 0);
         AddControl(hwnd, L"STATIC", L"Ctrl + Shift + F9: start / stop", SS_LEFT,
                    22, 232, 420, 27);
         startButton = AddControl(hwnd, L"BUTTON", L"Start recording", BS_DEFPUSHBUTTON,
@@ -325,6 +352,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         EnableWindow(startButton, TRUE);
         EnableWindow(folderEdit, TRUE);
         EnableWindow(fpsCombo, TRUE);
+        EnableWindow(resolutionCombo, TRUE);
         SetWindowTextW(startButton, L"Start recording");
         SetWindowTextW(statusText, result->success ? result->message.c_str() : L"Recording error");
         if (!result->success) MessageBoxW(hwnd, result->message.c_str(), L"BareRec", MB_ICONERROR);
