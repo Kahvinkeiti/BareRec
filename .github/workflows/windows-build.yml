@@ -16,18 +16,16 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Publish x64 app with native recording dependencies
+      - name: Publish self-contained single EXE (x64)
         shell: pwsh
         run: |
-          dotnet clean BareRec.csproj -c Release -p:Platform=x64
-          dotnet publish BareRec.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:PlatformTarget=x64 -p:PublishSingleFile=false -o publish
+          dotnet publish BareRec.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:PlatformTarget=x64 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o publish
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (!(Test-Path publish/BareRec.exe)) { throw "BareRec.exe missing" }
-          if (!(Test-Path publish/ScreenRecorderLib.dll)) { throw "ScreenRecorderLib.dll missing from publish output" }
-          Get-ChildItem publish | Select-Object Name,Length
-      - name: Upload complete application (keep all DLLs)
+          $exe = Get-Item publish/BareRec.exe -ErrorAction Stop
+          Write-Host "BareRec.exe size: $([math]::Round($exe.Length / 1MB, 2)) MiB"
+      - name: Upload only executable
         uses: actions/upload-artifact@v4
         with:
-          name: BareRec-Windows-x64
-          path: publish/
+          name: BareRec-Single-EXE
+          path: publish/BareRec.exe
           if-no-files-found: error
