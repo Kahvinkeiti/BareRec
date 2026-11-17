@@ -1,31 +1,35 @@
-# BareRec
+# BareRec — native Windows screen recorder
 
-BareRec is a minimalist Windows screen recorder. Record your primary display to a local MP4 without accounts, ads, cloud uploads, or a complicated editor.
+**Minimal. Local. No accounts. No cloud. No installer.**
 
-## Features
-- Start/stop with one button or **Ctrl+Shift+F9**
-- H.264 MP4 recordings in your selected local folder
-- Optional system audio and microphone
-- 30/60 FPS
-- Minimizes while recording; tray menu offers Stop
-- Local-only settings in `%APPDATA%\BareRec\settings.json`
+BareRec is being rewritten in **native C++**, using Windows Win32 APIs for screen capture and the built-in **Media Foundation H.264 encoder** for MP4 files. It does not bundle .NET, ScreenRecorderLib, FFmpeg, or third-party codec DLLs.
 
-**Requirements:** Windows 10/11, x64. The app records the primary monitor, not an individually selected window. Audio and recording support vary by device/Windows configuration.
+## Current native MVP
+- One `BareRec.exe` file, built with MSVC static runtime
+- Record the **primary display** to local H.264 MP4
+- Start / stop using the button or **Ctrl + Shift + F9**
+- Choose the recording folder
+- Select 30 or 60 FPS
+- English user interface
+- **Video only for now: system sound and microphone recording are NOT implemented yet**
+- Windows 10/11 x64; relies on the Windows Media Foundation H.264 components
 
-## Download / run
-In **Actions**, open the latest successful **Build Windows EXE** workflow run and download the `BareRec-Single-EXE` artifact. GitHub wraps artifacts in a ZIP: extract the single `BareRec.exe` and run it from anywhere. No .NET installation or separate DLL folder is needed.
+## Get the native EXE
+1. Open **Actions → Build BareRec Native Windows EXE**.
+2. Open the latest **successful** run.
+3. Download artifact **BareRec-Native-EXE**.
+4. Extract the ZIP provided by GitHub, and run the single `BareRec.exe` directly from wherever you like. No installation or DLL folder required.
 
-The executable is self-contained and embeds the native dependencies. At startup, the .NET single-file host may extract internal components to a temporary per-user cache, but users only need to keep the EXE. This build is not yet verified on Windows. If a recording fails, please share the full exception message.
+GitHub Actions uploads the EXE alone and prints its exact file size in the build log. The target is under 10 MiB, enforced during the build. Until CI finishes successfully and the EXE is tested on Windows, the size and behavior are not confirmed.
 
-The single-file .NET build can still be large; an under-10-MB executable would require a different implementation.
+## Implementation and limitations
+- Source: `native/main.cpp`
+- Build: MSVC x64, C++20, `/MT`
+- Capture: GDI `BitBlt` plus Windows Media Foundation sink writer
+- The initial GDI capture is intentionally simple. It may use more CPU than a GPU-based Desktop Duplication or Windows Graphics Capture implementation, and some hardware-accelerated/protected content may be blank.
+- Constant 30/60 FPS timestamps are used; performance and audio recording will need subsequent iterations.
+- On Windows N editions, Media Feature Pack may be needed for Windows' media encoder.
+- The old .NET files are kept in the repository as a legacy prototype, but **GitHub Actions now builds the native C++ version**.
 
-## Develop
-Install .NET 10 SDK on Windows, then run:
-```powershell
-dotnet restore
-dotnet run
-```
-
-Uses [ScreenRecorderLib](https://github.com/sskodje/ScreenRecorderLib) for local capture and encoding. License: MIT.
-
-**Troubleshooting:** If recording shows `BadImageFormatException`, please send the exception and note that the build is now single-file with full extraction enabled. The application interface is in English. Windows runtime behavior still needs verification.
+## License
+This project is under active development; license has not been chosen yet.
