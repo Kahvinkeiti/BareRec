@@ -12,8 +12,12 @@ BareRec is a minimalist Windows screen recorder. Record your primary display to 
 
 **Requirements:** Windows 10/11, x64. The app records the primary monitor, not an individually selected window. Audio and recording support vary by device/Windows configuration.
 
-## Download/build
-Under **Actions** choose **Build Windows EXE** → **Run workflow** (or push to main). After the workflow succeeds, download artifact `BareRec-Windows-x64`, extract the entire ZIP to a **new folder**, then run `BareRec.exe` from that folder. **Keep `ScreenRecorderLib.dll` and all other published files beside the EXE. Do not copy the EXE alone, and do not mix files from older builds.** This is a self-contained .NET app, so the user does not need the .NET SDK. Depending on the machine, the Microsoft Visual C++ Redistributable and Windows Media Feature Pack may be required.
+## Download / run
+In **Actions**, open the latest successful **Build Windows EXE** workflow run and download the `BareRec-Single-EXE` artifact. GitHub wraps artifacts in a ZIP: extract the single `BareRec.exe` and run it from anywhere. No .NET installation or separate DLL folder is needed.
+
+The executable is self-contained and embeds the native dependencies. At startup, the .NET single-file host may extract internal components to a temporary per-user cache, but users only need to keep the EXE. This build is not yet verified on Windows. If a recording fails, please share the full exception message.
+
+The single-file .NET build can still be large; an under-10-MB executable would require a different implementation.
 
 ## Develop
 Install .NET 10 SDK on Windows, then run:
@@ -24,4 +28,4 @@ dotnet run
 
 Uses [ScreenRecorderLib](https://github.com/sskodje/ScreenRecorderLib) for local capture and encoding. License: MIT.
 
-**Troubleshooting:** If recording shows `BadImageFormatException` for `ScreenRecorderLib.dll`, remove your old extracted app folder, download a fresh artifact from the latest successful Actions run, extract *every file*, and start the new EXE. This library requires the matching x64 native files and the Microsoft Visual C++ Redistributable (x64). The application interface is in English. Windows runtime behavior still needs verification.
+**Troubleshooting:** If recording shows `BadImageFormatException`, please send the exception and note that the build is now single-file with full extraction enabled. The application interface is in English. Windows runtime behavior still needs verification.
