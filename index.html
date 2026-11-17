@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080c15">
+  <meta name="description" content="BareRec is a simple, lightweight Windows screen recorder. One portable EXE, no accounts, no clutter.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="BareRec — Just record.">
+  <meta property="og:description" content="A small, portable Windows screen recorder. Download and record in seconds.">
+  <title>BareRec — Just record.</title>
+  <style>
+    :root{color-scheme:dark;--bg:#090c13;--panel:#111722;--border:#283244;--fg:#f6f8fd;--muted:#9ba8bc;--blue:#668fff}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:radial-gradient(ellipse 72% 42% at 52% 7%,#162745 0%,transparent 80%),var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:1080px;margin:auto;padding:0 24px}
+    header{border-bottom:1px solid #ffffff13}
+    nav{height:82px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;letter-spacing:-.5px}
+    .mark{width:34px;height:34px;border:2px solid #a4baff;border-radius:10px;display:grid;place-items:center;background:#1c2c4d;color:#bbceff}
+    .links{display:flex;align-items:center;gap:25px;color:#c6d0df;font-size:14px}
+    .links a:hover,.footlinks a:hover{color:white}
+    .hero{text-align:center;padding:116px 0 74px}
+    .eyebrow{display:inline-flex;align-items:center;gap:9px;border:1px solid #37445e;color:#c2d2ff;background:#16233c;border-radius:30px;padding:6px 14px;font-size:13px;font-weight:650}
+    .dot{width:7px;height:7px;background:#77dcb4;border-radius:50%;display:inline-block}
+    h1{font-size:clamp(52px,8vw,88px);line-height:1.03;letter-spacing:-.067em;margin:27px 0 19px;font-weight:850}
+    h1 span{color:#88a6ff}
+    .sub{color:#b4bfd0;max-width:590px;margin:0 auto;font-size:clamp(16px,2.1vw,20px);line-height:1.65}
+    .actions{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:35px 0 16px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:55px;padding:0 25px;border-radius:13px;font-size:16px;font-weight:750;transition:background .2s,transform .2s;border:1px solid transparent}
+    .btn:hover{transform:translateY(-2px)}
+    .primary{background:#e9efff;color:#102042;box-shadow:0 7px 40px #4d7de132}
+    .primary:hover{background:#fff}
+    .secondary{border-color:#3a475d;background:#182130;color:#e4e9f4}
+    .secondary:hover{background:#222d40}
+    .hint{font-size:13px;color:#90a0b7;margin-top:13px}
+    .release{font-size:13px;color:#afc6ff;margin-top:10px;min-height:22px}
+    .preview{margin:53px auto 0;max-width:765px;text-align:left;border:1px solid #3b4960;border-radius:18px;overflow:hidden;background:#111823;box-shadow:0 32px 90px #0008}
+    .windowbar{height:46px;border-bottom:1px solid #2a3546;background:#171f2d;display:flex;justify-content:space-between;align-items:center;padding:0 18px;color:#b3c1d6;font-size:13px}
+    .windowbrand{display:flex;align-items:center;gap:9px}
+    .windows{display:flex;gap:23px;color:#8b99ad}
+    .windowbody{padding:30px 36px 34px}
+    .windowbody h2{margin:0;font-size:27px;letter-spacing:-.8px}
+    .windowbody>p{color:var(--muted);margin:2px 0 26px;font-size:14px}
+    .ui-label{display:block;margin-bottom:8px;color:#bcc8db;font-size:12px;font-weight:700}
+    .fakeinput{border:1px solid #344158;background:#0c121e;border-radius:9px;padding:11px 15px;color:#cbd6e9;font-size:13px;word-break:break-all}
+    .settings{display:flex;gap:15px;margin:20px 0}
+    .setting{flex:1;min-width:0}.setting .fakeinput{display:flex;justify-content:space-between}
+    .fakebutton{background:#597fe8;color:white;border-radius:9px;text-align:center;font-weight:750;padding:13px}
+    .windowfoot{color:#8696ac;font-size:12px;margin-top:13px}
+    section.features{padding:75px 0 115px}
+    .sectionhead{text-align:center;font-size:35px;letter-spacing:-1.3px;margin:0 0 10px}
+    .sectiondesc{text-align:center;color:var(--muted);margin:0 auto 40px;max-width:530px}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .card{background:#121925;border:1px solid #283449;border-radius:16px;padding:28px}
+    .card .emoji{font-size:26px;display:block;margin-bottom:17px}
+    .card h3{font-size:17px;margin:0 0 9px}
+    .card p{color:#a8b5c8;margin:0;font-size:14px}
+    .download-area{border:1px solid #364768;border-radius:22px;background:linear-gradient(120deg,#192a48,#111925);padding:48px;text-align:center;margin:0 0 110px}
+    .download-area h2{margin:0 0 12px;font-size:31px;letter-spacing:-1px}
+    .download-area p{color:#bbc6d7;margin:0 0 23px}
+    footer{border-top:1px solid #ffffff18;padding:31px 0 40px;color:#93a1b6;font-size:13px}
+    .footer-row{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+    .footlinks{display:flex;gap:22px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media(max-width:730px){.hero{padding:80px 0 55px}.links{gap:14px;font-size:13px}.preview{margin-top:40px}.windowbody{padding:24px 18px}.cards{grid-template-columns:1fr}.download-area{padding:30px 18px;margin-bottom:75px}section.features{padding:50px 0 75px}}
+    @media(max-width:390px){.links a:first-child{display:none}.settings{flex-direction:column}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="wrap" aria-label="Main navigation">
+      <a class="brand" href="#top" aria-label="BareRec home"><span class="mark" aria-hidden="true">●</span>BareRec</a>
+      <div class="links">
+        <a href="#features">Features</a>
+        <a href="https://github.com/Kahvinkeiti/BareRec" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+        <a href="https://youtube.com/@kahvinkeiti" target="_blank" rel="noopener noreferrer">YouTube ↗</a>
+      </div>
+    </nav>
+  </header>
+  <main id="top">
+    <div class="wrap">
+      <div class="hero">
+        <span class="eyebrow"><span class="dot"></span> Lightweight Windows screen recorder</span>
+        <h1>Just <span>record.</span><br>Nothing else.</h1>
+        <p class="sub">Screen recording without the clutter. No accounts, no subscriptions, no confusing settings. Just a small app that saves your videos directly to your PC.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://github.com/Kahvinkeiti/BareRec/releases/latest/download/BareRec.exe" id="download" aria-label="Download BareRec for Windows">↓ &nbsp;Download for Windows</a>
+          <a class="btn secondary" href="https://github.com/Kahvinkeiti/BareRec" target="_blank" rel="noopener noreferrer">View on GitHub ↗</a>
+        </div>
+        <p class="hint">Windows 10 / 11 · 64-bit · Portable EXE · No installation</p>
+        <div class="release" id="release-status" aria-live="polite"></div>
+        <div class="preview" aria-label="Illustration of the BareRec interface">
+          <div class="windowbar"><span class="windowbrand">● &nbsp;BareRec</span><span class="windows" aria-hidden="true">— &nbsp; □ &nbsp; ×</span></div>
+          <div class="windowbody">
+            <h2>BareRec</h2>
+            <p>Record. Save. Done.</p>
+            <span class="ui-label">RECORDING FOLDER</span>
+            <div class="fakeinput">Videos / BareRec</div>
+            <div class="settings">
+              <div class="setting"><span class="ui-label">FRAME RATE</span><div class="fakeinput">30 FPS <span>⌄</span></div></div>
+              <div class="setting"><span class="ui-label">RESOLUTION</span><div class="fakeinput">Quality 720p <span>⌄</span></div></div>
+            </div>
+            <div class="fakebutton">● &nbsp; Start recording</div>
+            <div class="windowfoot">Ctrl + Shift + F9: start / stop</div>
+          </div>
+        </div>
+        <p class="hint">Interface illustration — actual appearance may differ slightly.</p>
+      </div>
+      <section class="features" id="features">
+        <h2 class="sectionhead">Everything you need. Nothing you don't.</h2>
+        <p class="sectiondesc">The essentials for recording your screen, kept simple.</p>
+        <div class="cards">
+          <article class="card"><span class="emoji" aria-hidden="true">⚡</span><h3>Lightweight</h3><p>Built in native C++ with Windows' built-in video encoder. No heavy bundled runtime.</p></article>
+          <article class="card"><span class="emoji" aria-hidden="true">🎬</span><h3>Save as MP4</h3><p>Record your primary display to H.264 MP4 files, saved locally to your chosen folder.</p></article>
+          <article class="card"><span class="emoji" aria-hidden="true">🔒</span><h3>Your recordings, your PC</h3><p>No sign-up, cloud uploads or subscription. Your recordings stay on your computer.</p></article>
+          <article class="card"><span class="emoji" aria-hidden="true">📦</span><h3>One portable file</h3><p>Download a single EXE and start it directly. No installation wizard.</p></article>
+          <article class="card"><span class="emoji" aria-hidden="true">🎛️</span><h3>Simple quality controls</h3><p>Choose Quality 720p or Original resolution, plus 15, 30 or 60 FPS.</p></article>
+          <article class="card"><span class="emoji" aria-hidden="true">⌨️</span><h3>Quick shortcut</h3><p>Start and stop recording using Ctrl + Shift + F9, even while you're in another app.</p></article>
+        </div>
+        <p class="hint" style="text-align:center;margin-top:27px">Current version records video only. Microphone and system audio are not yet supported.</p>
+      </section>
+      <section class="download-area" id="get">
+        <h2>Ready to record?</h2>
+        <p>One click to download. One EXE to run. No unnecessary extras.</p>
+        <a class="btn primary" href="https://github.com/Kahvinkeiti/BareRec/releases/latest/download/BareRec.exe">↓ &nbsp;Download BareRec.exe</a>
+        <div class="hint" style="margin-top:18px">Download served from the latest GitHub Release. No GitHub account required.</div>
+      </section>
+    </div>
+  </main>
+  <footer><div class="wrap footer-row"><span>© <span id="year">2026</span> BareRec · Made to keep recording simple.</span><div class="footlinks"><a href="https://github.com/Kahvinkeiti/BareRec" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="https://youtube.com/@kahvinkeiti" target="_blank" rel="noopener noreferrer">YouTube ↗</a></div></div></footer>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    // Only public metadata. Download buttons remain simple direct asset links.
+    fetch('https://api.github.com/repos/Kahvinkeiti/BareRec/releases/latest', {headers:{'Accept':'application/vnd.github+json'}})
+      .then(r => { if(!r.ok) throw new Error('No release metadata'); return r.json(); })
+      .then(release => {
+        const asset = (release.assets || []).find(a => a.name === 'BareRec.exe');
+        const status = document.getElementById('release-status');
+        if(asset) {
+          status.textContent = release.tag_name + ' · ' + (asset.size / 1024 / 1024).toFixed(2) + ' MB';
+          // GitHub's release asset response can redirect to a temporary file host; the user sees a download.
+          document.querySelectorAll('a[href$="/releases/latest/download/BareRec.exe"]').forEach(a => {a.href = asset.browser_download_url;});
+        } else {
+          status.textContent = 'Download available when BareRec.exe is attached to the latest release.';
+        }
+      })
+      .catch(() => { document.getElementById('release-status').textContent = 'Download the latest release using the button above.'; });
+  </script>
+</body>
+</html>
