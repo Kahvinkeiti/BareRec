@@ -46,12 +46,6 @@ The recording is saved as an MP4 file in the selected folder. On older CPUs, Ori
 
 BareRec includes a responsive website in [`index.html`](index.html), ready for **GitHub Pages**.
 
-**Publish it:**
-1. Open [Repository Settings → Pages](https://github.com/Kahvinkeiti/BareRec/settings/pages).
-2. Under **Build and deployment**, select **Deploy from a branch**.
-3. Select **main** and **/(root)**, then click **Save**.
-4. After GitHub Pages publishes, the site will be at **https://kahvinkeiti.github.io/BareRec/**.
-
 The website's **Download** button links directly to the asset named **`BareRec.exe`** from the latest GitHub Release. **Attach the EXE using that exact filename** to the latest published release; otherwise the direct download cannot work. The button starts the asset download instead of showing the GitHub Releases page. GitHub may handle the download via a redirect.
 
 The site also links to the GitHub repository and [YouTube channel](https://youtube.com/@kahvinkeiti).
@@ -65,16 +59,6 @@ The app is written in **native C++20**, using Windows Win32 GDI screen capture a
 - Build: Windows x64, MSVC, `/MT` static runtime
 - The workflow packages a standalone `BareRec.exe` as the `BareRec-Native-EXE` artifact
 - The workflow enforces an EXE size limit of 10 MiB; the precise size depends on the build
-
-### How to publish a release
-
-1. Run or open the latest successful [Build BareRec Native Windows EXE](https://github.com/Kahvinkeiti/BareRec/actions) workflow.
-2. Download **BareRec-Native-EXE** from the workflow's **Artifacts** section and extract `BareRec.exe`.
-3. Go to [Releases → Draft a new release](https://github.com/Kahvinkeiti/BareRec/releases/new).
-4. Create a version tag (for example, `v0.1.0`), give the release a title, and add release notes.
-5. Upload **`BareRec.exe`** under **Assets**, then publish.
-
-**Development status:** Early release. Screen capture uses GDI, so CPU usage can be high on older hardware. Hardware-accelerated capture and audio are planned improvements, not features of the current build.
 
 ## License
 
