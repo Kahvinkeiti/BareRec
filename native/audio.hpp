@@ -99,7 +99,7 @@ struct BareRecAudio {
         Check(output->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, BareRecAudioRate), "Set AAC rate");
         Check(output->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, BareRecAudioChannels), "Set AAC channels");
         Check(output->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16), "Set AAC depth");
-        Check(output->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, 16000), "Set AAC bitrate");
+        Check(output->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, 24000), "Set AAC 192 kbps bitrate");
         Check(writer->AddStream(output.Get(), &streamIndex), "Add AAC stream");
 
         Microsoft::WRL::ComPtr<IMFMediaType> input;
