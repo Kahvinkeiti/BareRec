@@ -3,6 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <dwmapi.h>
 #include <shlobj.h>
 #include <commctrl.h>
 #include <mfapi.h>
@@ -24,6 +25,7 @@
 
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "mfplat.lib")
@@ -38,7 +40,7 @@ constexpr int ID_START = 1001, ID_BROWSE = 1002, ID_FOLDER = 1003, ID_FPS = 1004
 constexpr int HOTKEY_ID = 77;
 HWND mainWindow{}, startButton{}, browseButton{}, folderEdit{}, fpsCombo{}, resolutionCombo{}, statusText{}, systemToggle{}, micToggle{};
 bool systemEnabled = true, micEnabled = false;
-HBRUSH backgroundBrush{}, inputBrush{};
+HBRUSH backgroundBrush{}, inputBrush{}, panelBrush{};
 HFONT titleFont{}, labelFont{};
 HFONT uiFont{};
 std::thread recordingThread;
@@ -319,8 +321,12 @@ HWND AddControl(HWND parent, const wchar_t* type, const wchar_t* label, DWORD st
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE: {
-        backgroundBrush = CreateSolidBrush(RGB(13, 18, 29));
-        inputBrush = CreateSolidBrush(RGB(25, 34, 50));
+        backgroundBrush = CreateSolidBrush(RGB(9, 13, 22));
+        panelBrush = CreateSolidBrush(RGB(18, 27, 43));
+        inputBrush = CreateSolidBrush(RGB(28, 40, 60));
+        // Dark title bar where supported (Windows 10 1903+ / Windows 11).
+        BOOL darkTitle = TRUE;
+        DwmSetWindowAttribute(hwnd, 20, &darkTitle, sizeof(darkTitle));
         uiFont = CreateFontW(-20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
         titleFont = CreateFontW(-34, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
@@ -360,27 +366,52 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         RegisterHotKey(hwnd, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F9);
         return 0;
     }
-    case WM_ERASEBKGND: {
-        RECT rc{};
-        GetClientRect(hwnd, &rc);
-        FillRect(reinterpret_cast<HDC>(wParam), &rc, backgroundBrush);
+    case WM_ERASEBKGND:
+        // Draw the entire themed background together to prevent flicker.
         return 1;
+    case WM_PAINT: {
+        PAINTSTRUCT ps{};
+        HDC dc = BeginPaint(hwnd, &ps);
+        RECT client{};
+        GetClientRect(hwnd, &client);
+        FillRect(dc, &client, backgroundBrush);
+        HPEN border = CreatePen(PS_SOLID, 1, RGB(39, 56, 79));
+        HGDIOBJ oldPen = SelectObject(dc, border);
+        HGDIOBJ oldBrush = SelectObject(dc, panelBrush);
+        RoundRect(dc, 17, 13, 554, 107, 22, 22); // Branding
+        RoundRect(dc, 17, 113, 554, 283, 22, 22); // Capture settings
+        RoundRect(dc, 17, 291, 554, 393, 22, 22); // Audio sources
+        RoundRect(dc, 17, 399, 554, 561, 22, 22); // Recording controls
+        SelectObject(dc, oldBrush);
+        SelectObject(dc, oldPen);
+        DeleteObject(border);
+        EndPaint(hwnd, &ps);
+        return 0;
     }
     case WM_CTLCOLORSTATIC: {
         HDC dc = reinterpret_cast<HDC>(wParam);
         SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, RGB(215, 226, 244));
-        return reinterpret_cast<LRESULT>(backgroundBrush);
+        HWND control = reinterpret_cast<HWND>(lParam);
+        wchar_t text[90]{};
+        GetWindowTextW(control, text, 90);
+        if (wcsstr(text, L"BareRec"))
+            SetTextColor(dc, RGB(157, 186, 255));
+        else if (wcsstr(text, L"FOLDER") || wcsstr(text, L"FRAME RATE") ||
+                 wcsstr(text, L"RESOLUTION") || wcsstr(text, L"AUDIO SOURCES"))
+            SetTextColor(dc, RGB(150, 171, 201));
+        else
+            SetTextColor(dc, RGB(222, 231, 246));
+        return reinterpret_cast<LRESULT>(panelBrush);
     }
     case WM_CTLCOLOREDIT: {
         HDC dc = reinterpret_cast<HDC>(wParam);
-        SetBkColor(dc, RGB(25, 34, 50));
+        SetBkColor(dc, RGB(28, 40, 60));
         SetTextColor(dc, RGB(244, 248, 255));
         return reinterpret_cast<LRESULT>(inputBrush);
     }
     case WM_CTLCOLORLISTBOX: {
         HDC dc = reinterpret_cast<HDC>(wParam);
-        SetBkColor(dc, RGB(25, 34, 50));
+        SetBkColor(dc, RGB(28, 40, 60));
         SetTextColor(dc, RGB(244, 248, 255));
         return reinterpret_cast<LRESULT>(inputBrush);
     }
@@ -391,7 +422,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         const HDC dc = draw->hDC;
         const bool disabled = (draw->itemState & ODS_DISABLED) != 0;
         if (draw->CtlID == ID_FPS || draw->CtlID == ID_RESOLUTION) {
-            HBRUSH fill = CreateSolidBrush(RGB(25, 34, 50));
+            HBRUSH fill = CreateSolidBrush((draw->itemState & ODS_SELECTED) && draw->itemID != static_cast<UINT>(-1) ? RGB(43, 67, 110) : RGB(28, 40, 60));
             FillRect(dc, &rect, fill);
             DeleteObject(fill);
             SetBkMode(dc, TRANSPARENT);
@@ -411,7 +442,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (draw->CtlID == ID_MIC_AUDIO) selected = micEnabled;
             COLORREF color = (draw->CtlID == ID_START)
                 ? (disabled ? RGB(70, 86, 121) : recording ? RGB(196, 71, 83) : RGB(65, 118, 242))
-                : (selected ? RGB(27, 57, 107) : RGB(25, 34, 50));
+                : (selected ? RGB(34, 71, 129) : RGB(28, 40, 60));
             HBRUSH fill = CreateSolidBrush(color);
             HPEN outline = CreatePen(PS_SOLID, 1, selected ? RGB(77, 137, 249) : RGB(53, 68, 94));
             HGDIOBJ oldBrush = SelectObject(dc, fill);
@@ -490,6 +521,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         DeleteObject(labelFont);
         DeleteObject(backgroundBrush);
         DeleteObject(inputBrush);
+        DeleteObject(panelBrush);
         PostQuitMessage(0);
         return 0;
     }
