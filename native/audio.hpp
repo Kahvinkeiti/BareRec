@@ -133,7 +133,8 @@ struct BareRecAudio {
                 }
                 ++sources;
             }
-            if (sources > 1) mixed /= sources;
+            // Preserve a healthy level while protecting against summed-source clipping.
+            if (sources > 1) mixed = static_cast<int>(mixed * 0.65);
             samples[i] = static_cast<int16_t>(std::clamp(mixed, -32768, 32767));
         }
         DWORD bytes = static_cast<DWORD>(samples.size() * sizeof(int16_t));
@@ -154,12 +155,26 @@ struct BareRecAudio {
         framesWritten += BareRecAudioChunkFrames;
     }
 
-    void WriteUntil(IMFSinkWriter* writer, LONGLONG targetHundredNs) {
+    void WriteUntil(IMFSinkWriter* writer, LONGLONG targetHundredNs, bool flushing = false) {
         if (!active) return;
         system.Poll();
         mic.Poll();
-        while (framesWritten * 10000000LL / BareRecAudioRate + 200000LL <= targetHundredNs)
+        constexpr size_t chunkSamples = static_cast<size_t>(BareRecAudioChunkFrames) * BareRecAudioChannels;
+        constexpr LONGLONG chunkDuration = 200000LL; // 20 ms in 100-ns units
+        constexpr LONGLONG captureJitterAllowance = 1200000LL; // 120 ms
+        // Audio packets arrive asynchronously from WASAPI. Do not pad normal packet
+        // latency with silence: that produced regular gaps and severe distortion.
+        // Keep a small latency budget so video and audio stay aligned in the file.
+        while (framesWritten * 10000000LL / BareRecAudioRate + chunkDuration <= targetHundredNs) {
+            const bool systemReady = !system.enabled || system.pending.size() >= chunkSamples;
+            const bool micReady = !mic.enabled || mic.pending.size() >= chunkSamples;
+            const LONGLONG audioCursor = framesWritten * 10000000LL / BareRecAudioRate;
+            const bool overdue = flushing || (targetHundredNs - audioCursor > captureJitterAllowance);
+            if (!overdue && (!systemReady || !micReady)) break;
+            // In true device silence, Windows may emit no loopback packets at all.
+            // Only overdue chunks may be padded, rather than every pending chunk.
             WriteChunk(writer);
+        }
     }
     void Stop() { system.Stop(); mic.Stop(); }
 };
