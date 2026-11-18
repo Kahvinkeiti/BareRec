@@ -23,8 +23,8 @@ BareRec is a small, native Windows screen recorder built for people who want to 
 - **Recording quality:** Quality 720p or Original resolution
 - **Frame rate:** 15, 30 or 60 FPS
 - **Keyboard shortcut:** `Ctrl + Shift + F9` to start or stop
-- **Audio recording:** Optional system audio and microphone, mixed into an AAC stereo track in the MP4 file
-- **Modern interface:** Dark background, blue accent, dedicated audio source toggles
+- **Audio recording:** Optional system audio and microphone, mixed into a 48 kHz / 192 kbps AAC stereo track in the MP4 file
+- **Modern interface:** Dark title bar, rounded sections, blue accent and dedicated audio source toggles
 - **Privacy-friendly:** No account, uploads, telemetry or cloud storage in the native recorder
 
 ## Requirements
@@ -32,7 +32,7 @@ BareRec is a small, native Windows screen recorder built for people who want to 
 - Windows 10 or Windows 11 (64-bit)
 - Windows Media Foundation H.264 support (normally included with Windows; Windows N editions may need the optional Media Feature Pack)
 
-**Current limitations:** BareRec captures the primary display, not an individually selected window. The new system-audio and microphone support uses WASAPI shared-mode recording and AAC encoding. It has not yet been verified on real Windows hardware; default audio devices and supported formats may vary.
+**Current limitations:** BareRec captures the primary display, not an individually selected window. System audio and microphone use WASAPI shared-mode recording and AAC encoding. Audio buffering has been improved to reduce gaps caused by Windows packet timing, but quality and synchronization still need testing on different devices.
 
 ## How to use
 
