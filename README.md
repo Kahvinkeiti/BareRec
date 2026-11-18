@@ -23,6 +23,8 @@ BareRec is a small, native Windows screen recorder built for people who want to 
 - **Recording quality:** Quality 720p or Original resolution
 - **Frame rate:** 15, 30 or 60 FPS
 - **Keyboard shortcut:** `Ctrl + Shift + F9` to start or stop
+- **Audio recording:** Optional system audio and microphone, mixed into an AAC stereo track in the MP4 file
+- **Modern interface:** Dark background, blue accent, dedicated audio source toggles
 - **Privacy-friendly:** No account, uploads, telemetry or cloud storage in the native recorder
 
 ## Requirements
@@ -30,7 +32,7 @@ BareRec is a small, native Windows screen recorder built for people who want to 
 - Windows 10 or Windows 11 (64-bit)
 - Windows Media Foundation H.264 support (normally included with Windows; Windows N editions may need the optional Media Feature Pack)
 
-**Current limitation:** BareRec records **video only**. **Microphone and system audio are not supported yet.** It currently captures the primary display, not an individually selected app window.
+**Current limitations:** BareRec captures the primary display, not an individually selected window. The new system-audio and microphone support uses WASAPI shared-mode recording and AAC encoding. It has not yet been verified on real Windows hardware; default audio devices and supported formats may vary.
 
 ## How to use
 
@@ -38,7 +40,8 @@ BareRec is a small, native Windows screen recorder built for people who want to 
 2. Select where you want recordings saved.
 3. Choose **Quality 720p** for a lighter recording or **Original** for native resolution.
 4. Choose 15, 30 or 60 FPS.
-5. Press **Start recording**, then **Stop and save** (or use `Ctrl + Shift + F9`).
+5. Enable **System audio**, **Microphone**, both, or neither.
+6. Press **Start recording**, then **Stop and save** (or use `Ctrl + Shift + F9`).
 
 The recording is saved as an MP4 file in the selected folder. On older CPUs, Original resolution and higher FPS may increase CPU usage.
 
@@ -54,7 +57,7 @@ The site also links to the GitHub repository and [YouTube channel](https://youtu
 
 The app is written in **native C++20**, using Windows Win32 GDI screen capture and Microsoft's Media Foundation H.264 encoder. It does not ship with .NET, FFmpeg or third-party codec DLLs.
 
-- Source code: [`native/main.cpp`](native/main.cpp)
+- Source code: [`native/main.cpp`](native/main.cpp) and [`native/audio.hpp`](native/audio.hpp)
 - Build workflow: [GitHub Actions](.github/workflows/windows-build.yml)
 - Build: Windows x64, MSVC, `/MT` static runtime
 - The workflow packages a standalone `BareRec.exe` as the `BareRec-Native-EXE` artifact
