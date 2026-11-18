@@ -9,7 +9,6 @@
 #include <mfidl.h>
 #include <mfreadwrite.h>
 #include <mferror.h>
-#include "audio.hpp"
 #include <wrl/client.h>
 #include <algorithm>
 #include <atomic>
@@ -58,6 +57,8 @@ void Check(HRESULT hr, const char* step) {
         throw std::runtime_error(message);
     }
 }
+
+#include "audio.hpp"
 
 std::wstring Wide(const std::string& utf8) {
     int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
@@ -261,7 +262,7 @@ void BeginRecording() {
     int fps = selectedFps == 0 ? 15 : selectedFps == 2 ? 60 : 30;
     bool efficientMode = SendMessageW(resolutionCombo, CB_GETCURSEL, 0, 0) != 1;
     const bool withSystem = systemEnabled, withMic = micEnabled;
-    SetWindowTextW(startButton, L"Stop and save");
+    SetWindowTextW(startButton, L"■  Stop and save");
     SetWindowTextW(statusText, L"Recording...");
     EnableWindow(folderEdit, FALSE);
     EnableWindow(fpsCombo, FALSE);
@@ -318,35 +319,122 @@ HWND AddControl(HWND parent, const wchar_t* type, const wchar_t* label, DWORD st
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE: {
-        uiFont = CreateFontW(-19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+        backgroundBrush = CreateSolidBrush(RGB(13, 18, 29));
+        inputBrush = CreateSolidBrush(RGB(25, 34, 50));
+        uiFont = CreateFontW(-20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-        AddControl(hwnd, L"STATIC", L"BareRec", SS_LEFT, 22, 17, 390, 40);
-        AddControl(hwnd, L"STATIC", L"Record. Save. Done.", SS_LEFT, 22, 62, 320, 27);
-        AddControl(hwnd, L"STATIC", L"Recording folder", SS_LEFT, 22, 103, 350, 28);
-        folderEdit = AddControl(hwnd, L"EDIT", DefaultFolder().c_str(), WS_BORDER | ES_AUTOHSCROLL,
-                                22, 133, 320, 31, ID_FOLDER);
-        AddControl(hwnd, L"BUTTON", L"Browse", BS_PUSHBUTTON, 354, 132, 105, 33, ID_BROWSE);
-        AddControl(hwnd, L"STATIC", L"Frame rate", SS_LEFT, 22, 183, 110, 28);
-        fpsCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL,
-                              134, 178, 90, 150, ID_FPS);
+        titleFont = CreateFontW(-34, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+        labelFont = CreateFontW(-17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+
+        HWND title = AddControl(hwnd, L"STATIC", L"●  BareRec", SS_LEFT, 30, 23, 480, 43);
+        SendMessageW(title, WM_SETFONT, reinterpret_cast<WPARAM>(titleFont), TRUE);
+        AddControl(hwnd, L"STATIC", L"Record. Save. Done.", SS_LEFT, 32, 69, 440, 27);
+        AddControl(hwnd, L"STATIC", L"RECORDING FOLDER", SS_LEFT, 32, 123, 440, 26);
+        folderEdit = AddControl(hwnd, L"EDIT", DefaultFolder().c_str(), ES_AUTOHSCROLL,
+                                32, 151, 375, 32, ID_FOLDER);
+        browseButton = AddControl(hwnd, L"BUTTON", L"Browse", BS_OWNERDRAW, 418, 150, 120, 35, ID_BROWSE);
+        AddControl(hwnd, L"STATIC", L"FRAME RATE", SS_LEFT, 32, 209, 200, 25);
+        AddControl(hwnd, L"STATIC", L"RESOLUTION", SS_LEFT, 298, 209, 230, 25);
+        fpsCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL | CBS_OWNERDRAWFIXED,
+                              32, 237, 223, 150, ID_FPS);
         SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"15 FPS"));
         SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"30 FPS"));
         SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"60 FPS"));
         SendMessageW(fpsCombo, CB_SETCURSEL, 1, 0);
-        AddControl(hwnd, L"STATIC", L"Resolution", SS_LEFT, 239, 183, 91, 28);
-        resolutionCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL,
-                                    329, 178, 130, 150, ID_RESOLUTION);
+        resolutionCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL | CBS_OWNERDRAWFIXED,
+                                    298, 237, 240, 150, ID_RESOLUTION);
         SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Quality 720p"));
         SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Original"));
         SendMessageW(resolutionCombo, CB_SETCURSEL, 0, 0);
-        AddControl(hwnd, L"STATIC", L"Ctrl + Shift + F9: start / stop", SS_LEFT,
-                   22, 232, 420, 27);
-        startButton = AddControl(hwnd, L"BUTTON", L"Start recording", BS_DEFPUSHBUTTON,
-                                 22, 276, 437, 48, ID_START);
-        statusText = AddControl(hwnd, L"STATIC", L"Ready (video only)", SS_LEFT,
-                                22, 342, 437, 45);
+
+        AddControl(hwnd, L"STATIC", L"AUDIO SOURCES", SS_LEFT, 32, 297, 460, 25);
+        systemToggle = AddControl(hwnd, L"BUTTON", L"System audio", BS_OWNERDRAW, 32, 330, 245, 45, ID_SYSTEM_AUDIO);
+        micToggle = AddControl(hwnd, L"BUTTON", L"Microphone", BS_OWNERDRAW, 290, 330, 248, 45, ID_MIC_AUDIO);
+        AddControl(hwnd, L"STATIC", L"Ctrl + Shift + F9  •  Start / stop", SS_LEFT, 32, 405, 440, 25);
+        startButton = AddControl(hwnd, L"BUTTON", L"●  Start recording", BS_OWNERDRAW,
+                                32, 439, 506, 56, ID_START);
+        statusText = AddControl(hwnd, L"STATIC", L"Ready to record", SS_LEFT,
+                                32, 513, 505, 36);
         RegisterHotKey(hwnd, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F9);
         return 0;
+    }
+    case WM_ERASEBKGND: {
+        RECT rc{};
+        GetClientRect(hwnd, &rc);
+        FillRect(reinterpret_cast<HDC>(wParam), &rc, backgroundBrush);
+        return 1;
+    }
+    case WM_CTLCOLORSTATIC: {
+        HDC dc = reinterpret_cast<HDC>(wParam);
+        SetBkMode(dc, TRANSPARENT);
+        SetTextColor(dc, RGB(215, 226, 244));
+        return reinterpret_cast<LRESULT>(backgroundBrush);
+    }
+    case WM_CTLCOLOREDIT: {
+        HDC dc = reinterpret_cast<HDC>(wParam);
+        SetBkColor(dc, RGB(25, 34, 50));
+        SetTextColor(dc, RGB(244, 248, 255));
+        return reinterpret_cast<LRESULT>(inputBrush);
+    }
+    case WM_CTLCOLORLISTBOX: {
+        HDC dc = reinterpret_cast<HDC>(wParam);
+        SetBkColor(dc, RGB(25, 34, 50));
+        SetTextColor(dc, RGB(244, 248, 255));
+        return reinterpret_cast<LRESULT>(inputBrush);
+    }
+    case WM_DRAWITEM: {
+        const auto* draw = reinterpret_cast<const DRAWITEMSTRUCT*>(lParam);
+        if (!draw) return FALSE;
+        RECT rect = draw->rcItem;
+        const HDC dc = draw->hDC;
+        const bool disabled = (draw->itemState & ODS_DISABLED) != 0;
+        if (draw->CtlID == ID_FPS || draw->CtlID == ID_RESOLUTION) {
+            HBRUSH fill = CreateSolidBrush(RGB(25, 34, 50));
+            FillRect(dc, &rect, fill);
+            DeleteObject(fill);
+            SetBkMode(dc, TRANSPARENT);
+            SetTextColor(dc, RGB(241, 246, 255));
+            wchar_t label[80]{};
+            if (draw->itemID != static_cast<UINT>(-1)) {
+                SendMessageW(draw->hwndItem, CB_GETLBTEXT, draw->itemID, reinterpret_cast<LPARAM>(label));
+            }
+            rect.left += 13;
+            DrawTextW(dc, label, -1, &rect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            return TRUE;
+        }
+        if (draw->CtlID == ID_START || draw->CtlID == ID_BROWSE ||
+            draw->CtlID == ID_SYSTEM_AUDIO || draw->CtlID == ID_MIC_AUDIO) {
+            bool selected = false;
+            if (draw->CtlID == ID_SYSTEM_AUDIO) selected = systemEnabled;
+            if (draw->CtlID == ID_MIC_AUDIO) selected = micEnabled;
+            COLORREF color = (draw->CtlID == ID_START)
+                ? (disabled ? RGB(70, 86, 121) : recording ? RGB(196, 71, 83) : RGB(65, 118, 242))
+                : (selected ? RGB(27, 57, 107) : RGB(25, 34, 50));
+            HBRUSH fill = CreateSolidBrush(color);
+            HPEN outline = CreatePen(PS_SOLID, 1, selected ? RGB(77, 137, 249) : RGB(53, 68, 94));
+            HGDIOBJ oldBrush = SelectObject(dc, fill);
+            HGDIOBJ oldPen = SelectObject(dc, outline);
+            RoundRect(dc, rect.left, rect.top, rect.right, rect.bottom, 15, 15);
+            SelectObject(dc, oldBrush);
+            SelectObject(dc, oldPen);
+            DeleteObject(fill);
+            DeleteObject(outline);
+            SetBkMode(dc, TRANSPARENT);
+            SetTextColor(dc, disabled ? RGB(171, 181, 202) : RGB(250, 252, 255));
+            wchar_t label[120]{};
+            GetWindowTextW(draw->hwndItem, label, 120);
+            if (draw->CtlID == ID_SYSTEM_AUDIO || draw->CtlID == ID_MIC_AUDIO) {
+                std::wstring text = selected ? L"✓  " : L"○  ";
+                text += label;
+                DrawTextW(dc, text.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            } else {
+                DrawTextW(dc, label, -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            }
+            return TRUE;
+        }
+        break;
     }
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
@@ -355,6 +443,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             return 0;
         case ID_BROWSE:
             if (!recording) SelectFolder(hwnd);
+            return 0;
+        case ID_SYSTEM_AUDIO:
+            if (!recording) { systemEnabled = !systemEnabled; InvalidateRect(systemToggle, nullptr, TRUE); }
+            return 0;
+        case ID_MIC_AUDIO:
+            if (!recording) { micEnabled = !micEnabled; InvalidateRect(micToggle, nullptr, TRUE); }
             return 0;
         }
         break;
@@ -374,7 +468,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         EnableWindow(resolutionCombo, TRUE);
         EnableWindow(systemToggle, TRUE);
         EnableWindow(micToggle, TRUE);
-        SetWindowTextW(startButton, L"Start recording");
+        SetWindowTextW(startButton, L"●  Start recording");
         SetWindowTextW(statusText, result->success ? result->message.c_str() : L"Recording error");
         if (!result->success) MessageBoxW(hwnd, result->message.c_str(), L"BareRec", MB_ICONERROR);
         return 0;
@@ -392,6 +486,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         UnregisterHotKey(hwnd, HOTKEY_ID);
         if (recordingThread.joinable()) recordingThread.join();
         DeleteObject(uiFont);
+        DeleteObject(titleFont);
+        DeleteObject(labelFont);
+        DeleteObject(backgroundBrush);
+        DeleteObject(inputBrush);
         PostQuitMessage(0);
         return 0;
     }
@@ -414,7 +512,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     RegisterClassExW(&cls);
     mainWindow = CreateWindowExW(0, className, L"BareRec — Lightweight Screen Recorder",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT,
-        CW_USEDEFAULT, 500, 440, nullptr, nullptr, instance, nullptr);
+        CW_USEDEFAULT, 585, 610, nullptr, nullptr, instance, nullptr);
     if (!mainWindow) {
         CoUninitialize();
         return 1;
