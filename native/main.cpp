@@ -219,7 +219,7 @@ void Record(const std::wstring& file, int fps, bool efficientMode, bool withSyst
                 nextFrame = std::chrono::steady_clock::now();
         } while (!stopRequested.load());
 
-        audio.WriteUntil(writer.Get(), frameNumber * frameDuration);
+        audio.WriteUntil(writer.Get(), frameNumber * frameDuration, true);
         audio.Stop();
         Check(writer->Finalize(), "Finalize MP4 recording");
 
