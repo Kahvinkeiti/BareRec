@@ -9,6 +9,7 @@
 #include <mfidl.h>
 #include <mfreadwrite.h>
 #include <mferror.h>
+#include "audio.hpp"
 #include <wrl/client.h>
 #include <algorithm>
 #include <atomic>
@@ -34,9 +35,12 @@ using Microsoft::WRL::ComPtr;
 namespace fs = std::filesystem;
 
 constexpr UINT WM_RECORD_DONE = WM_APP + 1;
-constexpr int ID_START = 1001, ID_BROWSE = 1002, ID_FOLDER = 1003, ID_FPS = 1004, ID_RESOLUTION = 1005;
+constexpr int ID_START = 1001, ID_BROWSE = 1002, ID_FOLDER = 1003, ID_FPS = 1004, ID_RESOLUTION = 1005, ID_SYSTEM_AUDIO = 1006, ID_MIC_AUDIO = 1007;
 constexpr int HOTKEY_ID = 77;
-HWND mainWindow{}, startButton{}, folderEdit{}, fpsCombo{}, resolutionCombo{}, statusText{};
+HWND mainWindow{}, startButton{}, browseButton{}, folderEdit{}, fpsCombo{}, resolutionCombo{}, statusText{}, systemToggle{}, micToggle{};
+bool systemEnabled = true, micEnabled = false;
+HBRUSH backgroundBrush{}, inputBrush{};
+HFONT titleFont{}, labelFont{};
 HFONT uiFont{};
 std::thread recordingThread;
 std::atomic<bool> stopRequested{false}, recording{false};
@@ -94,7 +98,7 @@ std::wstring MakeFilename(const std::wstring& directory) {
     return (fs::path(directory) / name).wstring();
 }
 
-void Record(const std::wstring& file, int fps, bool efficientMode) {
+void Record(const std::wstring& file, int fps, bool efficientMode, bool withSystem, bool withMic) {
     HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     Check(com, "Initialize COM");
     bool mfStarted = false;
@@ -151,6 +155,8 @@ void Record(const std::wstring& file, int fps, bool efficientMode) {
         Check(MFSetAttributeRatio(input.Get(), MF_MT_FRAME_RATE, fps, 1), "Set input FPS");
         Check(MFSetAttributeRatio(input.Get(), MF_MT_PIXEL_ASPECT_RATIO, 1, 1), "Set input aspect ratio");
         Check(writer->SetInputMediaType(stream, input.Get(), nullptr), "Configure input conversion");
+        BareRecAudio audio;
+        audio.Initialize(writer.Get(), withSystem, withMic);
         Check(writer->BeginWriting(), "Begin recording");
 
         screen = GetDC(nullptr);
@@ -203,6 +209,7 @@ void Record(const std::wstring& file, int fps, bool efficientMode) {
             Check(sample->SetSampleDuration(frameDuration), "Set sample duration");
             Check(writer->WriteSample(stream, sample.Get()), "Encode video frame");
             ++frameNumber;
+            audio.WriteUntil(writer.Get(), frameNumber * frameDuration);
 
             nextFrame += std::chrono::nanoseconds(1000000000LL / fps);
             std::this_thread::sleep_until(nextFrame);
@@ -211,6 +218,8 @@ void Record(const std::wstring& file, int fps, bool efficientMode) {
                 nextFrame = std::chrono::steady_clock::now();
         } while (!stopRequested.load());
 
+        audio.WriteUntil(writer.Get(), frameNumber * frameDuration);
+        audio.Stop();
         Check(writer->Finalize(), "Finalize MP4 recording");
 
         if (oldBitmap) SelectObject(memoryDC, oldBitmap);
@@ -251,16 +260,19 @@ void BeginRecording() {
     int selectedFps = static_cast<int>(SendMessageW(fpsCombo, CB_GETCURSEL, 0, 0));
     int fps = selectedFps == 0 ? 15 : selectedFps == 2 ? 60 : 30;
     bool efficientMode = SendMessageW(resolutionCombo, CB_GETCURSEL, 0, 0) != 1;
+    const bool withSystem = systemEnabled, withMic = micEnabled;
     SetWindowTextW(startButton, L"Stop and save");
     SetWindowTextW(statusText, L"Recording...");
     EnableWindow(folderEdit, FALSE);
     EnableWindow(fpsCombo, FALSE);
     EnableWindow(resolutionCombo, FALSE);
+    EnableWindow(systemToggle, FALSE);
+    EnableWindow(micToggle, FALSE);
 
-    recordingThread = std::thread([file = outputFile, fps, efficientMode] {
+    recordingThread = std::thread([file = outputFile, fps, efficientMode, withSystem, withMic] {
         auto* result = new Completion;
         try {
-            Record(file, fps, efficientMode);
+            Record(file, fps, efficientMode, withSystem, withMic);
             result->success = true;
             result->message = L"Saved: " + fs::path(file).filename().wstring();
         } catch (const std::exception& error) {
@@ -360,6 +372,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         EnableWindow(folderEdit, TRUE);
         EnableWindow(fpsCombo, TRUE);
         EnableWindow(resolutionCombo, TRUE);
+        EnableWindow(systemToggle, TRUE);
+        EnableWindow(micToggle, TRUE);
         SetWindowTextW(startButton, L"Start recording");
         SetWindowTextW(statusText, result->success ? result->message.c_str() : L"Recording error");
         if (!result->success) MessageBoxW(hwnd, result->message.c_str(), L"BareRec", MB_ICONERROR);
