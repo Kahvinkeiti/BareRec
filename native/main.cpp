@@ -337,13 +337,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         browseButton = AddControl(hwnd, L"BUTTON", L"Browse", BS_OWNERDRAW, 418, 150, 120, 35, ID_BROWSE);
         AddControl(hwnd, L"STATIC", L"FRAME RATE", SS_LEFT, 32, 209, 200, 25);
         AddControl(hwnd, L"STATIC", L"RESOLUTION", SS_LEFT, 298, 209, 230, 25);
-        fpsCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL | CBS_OWNERDRAWFIXED,
+        fpsCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL | CBS_OWNERDRAWFIXED | CBS_HASSTRINGS,
                               32, 237, 223, 150, ID_FPS);
         SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"15 FPS"));
         SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"30 FPS"));
         SendMessageW(fpsCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"60 FPS"));
         SendMessageW(fpsCombo, CB_SETCURSEL, 1, 0);
-        resolutionCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL | CBS_OWNERDRAWFIXED,
+        resolutionCombo = AddControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_VSCROLL | CBS_OWNERDRAWFIXED | CBS_HASSTRINGS,
                                     298, 237, 240, 150, ID_RESOLUTION);
         SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Quality 720p"));
         SendMessageW(resolutionCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Original"));
